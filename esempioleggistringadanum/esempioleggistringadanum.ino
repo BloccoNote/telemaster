@@ -1,4 +1,4 @@
-//guarda test.txt per capire meglio, questo programma stampa la stringa associata al num dichiarato in int sel, e la manda al monitor seriale
+//guarda test.txt per capire meglio, programma di esempio per leggere dal txt la stringa numero int sel
 
 
 #include<SPI.h>
