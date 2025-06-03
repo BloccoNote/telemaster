@@ -1,107 +1,139 @@
 #include "string handler.h"
 
 
-
+/// @brief Constructor
+/// @param r rows
+/// @param c columns
 string_handler::string_handler(int r, int c){
     Init(r,c);
     
 }
 
+/// @brief destructor
 string_handler::~string_handler()
 {
 }
 
+/// @brief Initialize all variables
+/// @param r rows
+/// @param c cols
 void string_handler::Init(int r, int c){
     rows = r;
     cols = c;
     clear_buffers();
 }
 
+/// @brief clears the buffers used to me more
 void string_handler::clear_buffers(){
     current_pos = 0;
     text_len = 0;
-    memset(text, 0, MAX_STRING);
+    text_len = 0;
     memset(buffer, 0, MAX_STRING);
 }
 
-
+/// @brief Set text to be tokenized
+/// @param in string of text
+/// @note MUST end with '\0' character
 void string_handler::SetText(char* in){
     if(in == NULL){
         PrintError("'in' buffer pointer is NULL");
         return;
     }
+    Init(rows, cols);
     text_len = find_string_len(in);
-    copy_string(text, in);
     copy_string(buffer, in);
 }
 
-
-
-void string_handler::Get_print_token(char* tkn){
+/// @brief Fills the buffer 'tkn' with tokens of 'buffer' so that can fit a display of rows * cols dimentions
+/// @param tkn PREALLOCATED buffer of minimum dimentions rows*cols + rows
+/// @return true if it tokenized last element of buffer
+/// @example if the display is a LCD_liquid display (16*2) and text is: \n
+/// "Hello world! See you in the next print\0"                          \n
+/// the result would be:                                                \n
+/// "Hello world! \nSee you in the \0"                                  \n
+///                ^                ^                                   \n
+///                13               15                                  \n
+/// next time you call this function will continue the phrase           \n
+/// @note as you can see from the example in 'tkn' buffer you have to account extra characters '\n' and '\0'
+bool string_handler::Get_print_token(char* tkn){
+    //variable definition
     int row_ptr = 0;
-    char* end_word = 0;
     int word_len = 0;
-    char* buff = buffer;
-    vector<char> final_buffer = {0};
     int try_count = 0;
-    while(try_count < 15){
+    char* end_word = 0;
+    char* buff = buffer + current_pos;
+    current_row = 0;
+    vector<char> final_buffer = {0};
+
+    while(try_count <= MAX_TRY){
+        // calcolates world len based on the spaces
         if((end_word = strchr(buff, ' ')) == NULL){
+
             if(row_ptr + (text_len - current_pos) > cols){
-                if(current_row <= rows-1){
-                final_buffer.push_back('\n');
-                current_row++;
-                row_ptr = 0;
+                if(current_row < rows-1){
+                    final_buffer.push_back('\n');
+                    current_row++;
+                    row_ptr = 0;
                 }
                 else {
                     break;
                 }
             }
-            apend_string_to_vector(final_buffer, buff, text_len-current_pos);
+
+            int final_len = text_len-current_pos;
+            apend_string_to_vector(final_buffer, buff, final_len);
+            current_pos += final_len;
             break;
+
         }
-        word_len = (end_word - buff)+1;
-    printf("====================================\n");
-    printf("world len is: %d,\ncurrent buffer: %s\n", word_len, buff);
-    printf("current_ptr = %d,\ncols = %d\n", row_ptr, cols);
-    printf("====================================\n");
+
+        word_len = (end_word - buff) + 1; // the +1 include the space
+        if(word_len > cols){
+            PrintError("in buff there is a word longer than 'cols'");
+            return true;
+        }
+
         if(row_ptr + word_len > cols){
+
             if(current_row < rows-1){
                 final_buffer.push_back('\n');
                 current_row++;
                 row_ptr = 0;
-                    printf("====================================\n");
-                    printf("end of row!, row is %d / %d\n", current_row, rows);
-                    printf("====================================\n");
             }
             else{
-                    printf("====================================\n");
-                    printf("OUT\n");
-                    printf("====================================\n");
                 break;
             }
         }
+
         apend_string_to_vector(final_buffer, buff, word_len);
         buff += word_len;
         row_ptr += word_len;
         current_pos += word_len;
         try_count++;
+
+    }
+    if(try_count == MAX_TRY){
+        PrintError("Max try reached");
+        return true;
     }
     final_buffer.push_back('\0');
     convert_char_vector_to_string(tkn, final_buffer);
-    ///BUG: final string is generated but cannot be printed
-    printf("====================================\n");
-    printf("return buffer : %s\n", tkn);
-    printf("====================================\n");
+    if(current_pos >= text_len) return true;
+    return false;
 }
 
 
-
-
+/// @brief The error message fucntion
+/// @param ErrMsg the string to be printed
+/// TODO: When porting this class to arduino do not use cout but SerialPrintln(ErrorMsg);
+/// TODO: it would be cool if it could tell you in what function the error accourred or the line of text, mabye a macro?
 void string_handler::PrintError(const char* ErrMsg){
-    ///TODO: add SerialPrintl(...)
     cout << "[ ERROR ] " << ErrMsg << endl;
 }
 
+/// @brief Safely copy a string to another, memcopy sucks
+/// @param dest destination string
+/// @param source source string
 void string_handler::copy_string(char* dest, char* source){
     int len;
     if(dest == NULL || source == NULL){
@@ -112,12 +144,13 @@ void string_handler::copy_string(char* dest, char* source){
     for(int i = 0; i < len; i++){
         dest[i] = source[i];
     }
-    printf("====================================\n");
-    printf("source = %s,\n dest = %s\n", source, dest);
-    printf("====================================\n");
 }
 
-int string_handler::find_string_len(char* str, char end_char){
+/// @brief finds the lenght of a string utill 'end_char'
+/// @param str the string
+/// @param end_char terminating character, defaulted to '\0'
+/// @return the lenght
+int string_handler::find_string_len(const char* str, char end_char){
     char* endchr = NULL;
     if(str ==  NULL) {
         PrintError("'str' buffer is NULL");
@@ -128,26 +161,36 @@ int string_handler::find_string_len(char* str, char end_char){
         PrintError("could not find end_char in string str");
         return 0;
     }
-    printf("====================================\n");
-    printf("%s len is %ld\n", str, endchr - str);
-    printf("====================================\n");
     return (int)(endchr - str);
 }
 
-
-void string_handler::apend_string_to_vector(vector<char> &final_bffer, const char* str, int len){
-    for(int i = 0; i < len; i++){
-        final_bffer.push_back(str[i]);
+/// @brief apend 'string' of length 'len' to char vector 'final_buffer'
+/// @param final_buffer vector of char elements
+/// @param str 
+/// @param len 
+void string_handler::apend_string_to_vector(vector<char> &final_buffer, char* str, int len){
+    int i = 0;
+    if(final_buffer.size() == 1){
+        //first element of string was the \0 char (end string)
+        final_buffer[0] = str[0];
+        i++;
+    }
+    for(i; i < len; i++){
+        final_buffer.push_back(str[i]);
     }
 }
 
+/// @brief converts a vector of char into a string
+/// @param buff the reciving string
+/// @param src vector of char
 void string_handler::convert_char_vector_to_string(char* buff, vector<char> src){
-    printf("====================================\n");
-    printf("start conversion of vectro\n");
-    printf("====================================\n");
+
     int len = src.size();
+    int buff_len = find_string_len(buff);
+    if(buff_len < len){
+        PrintError("buffer given is too short");
+    }
     for(int i = 0; i < len; i ++){
-        printf("%c = %c\n", buff[i] , src[i]);
         buff[i] = src[i];
     }
 }

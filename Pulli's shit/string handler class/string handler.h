@@ -13,12 +13,12 @@ using namespace std;
 
 
 const int MAX_STRING = 1024; 
+const int MAX_TRY    = 30;
 
 
 class string_handler
 {
 protected:
-    char text[MAX_STRING];
     char buffer[MAX_STRING];
     int rows = 2;
     int cols = 16;
@@ -34,17 +34,17 @@ public:
     void clear_buffers();
     void SetText(char* in);
 
-    void Get_print_token(char* tkn);
+    bool Get_print_token(char* tkn);
 
 
     /// @name UTILITY FUNCTIONS
     /// @{
     void PrintError(const char* ErrMsg);
 
-    void copy_string(char* dest, char* source);
-    int find_string_len(char* str, char end_char = '\n');
+    void copy_string(char* dest,char* source);
+    int find_string_len(const char* str, char end_char = '\0');
 
-    void apend_string_to_vector(vector<char> &final_bffer, const char* str, int len);
+    void apend_string_to_vector(vector<char> &final_buffer, char* str, int len);
     void convert_char_vector_to_string(char* buff, vector<char> src);
     ///@}
 };
