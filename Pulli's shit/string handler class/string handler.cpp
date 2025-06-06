@@ -18,6 +18,12 @@ string_handler::~string_handler()
 /// @param r rows
 /// @param c cols
 void string_handler::Init(int r, int c){
+    if(r <= 0 || c <= 0){
+        PrintError("Rows or Columns should be an integer > 0");
+        PrintError("Setting defaul values: rows = 2, columns = 16");
+        r = 2;
+        c = 16;
+    }
     rows = r;
     cols = c;
     clear_buffers();

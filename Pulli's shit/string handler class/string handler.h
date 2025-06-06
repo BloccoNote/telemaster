@@ -30,7 +30,7 @@ public:
     string_handler(int r = 2, int c = 16);
     ~string_handler();
 
-    void Init(int r, int c);
+    void Init(int r = 2, int c = 16);
     void clear_buffers();
     void SetText(char* in);
 

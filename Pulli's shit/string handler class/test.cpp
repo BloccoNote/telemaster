@@ -18,6 +18,7 @@ int main(){
     string_handler S;
     char* tests = "Hello world!, this example show you what this class can do to strings of max lenght 1024";
     char* test_2 = new char[MAX_STRING];
+    char tok[1024] = {0};
 
     
     //testing while loop capabilities
@@ -32,6 +33,15 @@ int main(){
     S.SetText(test_2);
     print_all_text(S);
 
+    //testing weird cases;
+    S.Init();
+    S.Get_print_token(tok);
+    strcmp(tok, "\0") != 0 ? printf("X\n") : printf("OK\n");
+
+    S.SetText(". . . . . . . assert                       Too many spaces!!");
+    print_all_text(S);
+
+    S.Init(-1,-1);
 
     return 0;
 }
