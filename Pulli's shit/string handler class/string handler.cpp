@@ -69,7 +69,7 @@ bool string_handler::Get_print_token(char* tkn){
     char* end_word = 0;
     char* buff = buffer + current_pos;
     current_row = 0;
-    vector<char> final_buffer = {0};
+    final_buffer.clear();
 
     while(try_count <= MAX_TRY){
         // calcolates world len based on the spaces
@@ -87,7 +87,7 @@ bool string_handler::Get_print_token(char* tkn){
             }
 
             int final_len = text_len-current_pos;
-            apend_string_to_vector(final_buffer, buff, final_len);
+            apend_string_to_vector(buff, final_len);
             current_pos += final_len;
             break;
 
@@ -111,7 +111,7 @@ bool string_handler::Get_print_token(char* tkn){
             }
         }
 
-        apend_string_to_vector(final_buffer, buff, word_len);
+        apend_string_to_vector(buff, word_len);
         buff += word_len;
         row_ptr += word_len;
         current_pos += word_len;
@@ -123,12 +123,13 @@ bool string_handler::Get_print_token(char* tkn){
         return true;
     }
     final_buffer.push_back('\0');
-    convert_char_vector_to_string(tkn, final_buffer);
+    convert_char_vector_to_string(tkn);
     if(current_pos >= text_len) return true;
     return false;
 }
 
 
+#ifndef _ARDUINO_
 /// @brief The error message fucntion
 /// @param ErrMsg the string to be printed
 /// TODO: When porting this class to arduino do not use cout but SerialPrintln(ErrorMsg);
@@ -136,6 +137,16 @@ bool string_handler::Get_print_token(char* tkn){
 void string_handler::PrintError(const char* ErrMsg){
     cout << "[ ERROR ] " << ErrMsg << endl;
 }
+#else 
+// @brief The error message fucntion
+/// @param ErrMsg the string to be printed
+/// TODO: When porting this class to arduino do not use cout but SerialPrintln(ErrorMsg);
+/// TODO: it would be cool if it could tell you in what function the error accourred or the line of text, mabye a macro?
+void string_handler::PrintError(const char* ErrMsg){
+    Serial.print("[ ERROR ]");
+    Serial.println(ErrMsg);
+}
+#endif
 
 /// @brief Safely copy a string to another, memcopy sucks
 /// @param dest destination string
@@ -157,7 +168,7 @@ void string_handler::copy_string(char* dest, char* source){
 /// @param end_char terminating character, defaulted to '\0'
 /// @return the lenght
 int string_handler::find_string_len(const char* str, char end_char){
-    char* endchr = NULL;
+    const char* endchr = NULL;
     if(str ==  NULL) {
         PrintError("'str' buffer is NULL");
         return 0;
@@ -170,11 +181,10 @@ int string_handler::find_string_len(const char* str, char end_char){
     return (int)(endchr - str);
 }
 
-/// @brief apend 'string' of length 'len' to char vector 'final_buffer'
-/// @param final_buffer vector of char elements
+/// @brief apend 'string' of length 'len' to char vector 'final_buffer', private variable of class
 /// @param str 
 /// @param len 
-void string_handler::apend_string_to_vector(vector<char> &final_buffer, char* str, int len){
+void string_handler::apend_string_to_vector(char* str, int len){
     int i = 0;
     if(final_buffer.size() == 1){
         //first element of string was the \0 char (end string)
@@ -188,16 +198,15 @@ void string_handler::apend_string_to_vector(vector<char> &final_buffer, char* st
 
 /// @brief converts a vector of char into a string
 /// @param buff the reciving string
-/// @param src vector of char
-void string_handler::convert_char_vector_to_string(char* buff, vector<char> src){
+void string_handler::convert_char_vector_to_string(char* buff){
 
-    int len = src.size();
+    int len = final_buffer.size();
     int buff_len = find_string_len(buff);
     if(buff_len < len){
         PrintError("buffer given is too short");
     }
     for(int i = 0; i < len; i ++){
-        buff[i] = src[i];
+        buff[i] = final_buffer[i];
     }
 }
 
