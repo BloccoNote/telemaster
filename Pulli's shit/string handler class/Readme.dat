@@ -1,0 +1,21 @@
+La classe String handler non funzionava su arduino ide perchè questa non aveva le stl (standart template lib), necessarie per il funzionamento
+o si fa un array dinamico (fattibile ma noioso) o, come ho fatto per prigrizia, si aggiunge una libreria.
+In questo caso ho aggiunto:
+ - Arduino.h  - viene con l'ide
+ - Vector.h   - va scaricata da gitHub o dal sito di arduino
+
+Per scaricare Vector.h si può usare questo link:
+
+   https://docs.arduino.cc/libraries/vector/
+
+é importante notare che, per compilare anche da vscode o terminale, ci sono anche librerie NON accettate dalla ide Arduino.
+Quando si usa la classe nell'ide Arduino bisogna metterci un define prima che "attiva" le librerie per arduino e "disattiva" quelle non di ardunio (es stdio & stl).
+Per farlo si fa in questo modo:
+
+...
+#define _ARDUINO_
+#include "string handler.h"
+...
+
+
+
