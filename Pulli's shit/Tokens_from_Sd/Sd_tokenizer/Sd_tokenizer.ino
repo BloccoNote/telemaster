@@ -11,19 +11,18 @@ Sd_tokenizer::~Sd_tokenizer(){
 		delete buff;
 		buff = NULL;
 	}
+	SD.end();
 }
 
 void Sd_tokenizer::Init(int cs_pin, const char* filename){
 	if(filename == NULL || cs_pin < 0) stall();
-	if(!fileptr){
-		if(!SD.begin(cs_pin)){
-			PrintMsg(Error, "Connection failed with SD Card");
-			//stall the program
-			stall();
-		}
-		PrintMsg(Info, "SD connection successfully established");
-		fileptr = SD.open(filename, FILE_READ);
+	if(!SD.begin(cs_pin)){
+		PrintMsg(Error, "Connection failed with SD Card");
+		//stall the program
+		stall();
 	}
+	PrintMsg(Info, "SD connection successfully established");
+	fileptr = SD.open(filename, FILE_READ);
 }
 
 
@@ -32,28 +31,28 @@ int Sd_tokenizer::read_line_sd(){
 		delete buff; //if buff pointer is not initialized with null it crashes here
 	}
 	int return_val = 0;
-	unsigned long starting_position = Fileptr.position();
+	unsigned long starting_position = fileptr.position();
 	unsigned long end_position = 0;
 	char current_char = 0;
 	while(current_char != '\n'){
-		if(Fileptr.available() <= 1){ //<= 1 handle "\n\0" scenarios
+		if(fileptr.available() <= 1){ //<= 1 handle "\n\0" scenarios
 			return_val = 1;
 			break;
 		}
-		current_char = Fileptr.read();
+		current_char = fileptr.read();
 	}
-	end_position = Fileptr.position();
+	end_position = fileptr.position();
 	if(starting_position > end_position){
 		PrintMsg(Error, "end of line should be higher than start of line");
 		stall();
 	}
 	buff_len = end_position - starting_position;
 	buff = new char [buff_len];
-	if(!Fileptr.seek(starting_position)){
+	if(!fileptr.seek(starting_position)){
 		PrintMsg(Error, "error in seek() method");
 		stall();
 	}
-	Fileptr.read(buff, buff_len);
+	fileptr.read(buff, buff_len);
 	buff[buff_len-1] = '\0';
 	return return_val;
 }
@@ -87,7 +86,7 @@ int Sd_tokenizer::find_and_remove_index(char separator){
 	int index;
 	char* p = NULL;
 	int value = 0;
-	int i = 0
+	int i = 0;
 	if(!(p = strchr(buff, separator))){
 		PrintMsg(Error, "seprator character is not in the buffer");
 		stall();
@@ -107,17 +106,17 @@ int Sd_tokenizer::find_and_remove_index(char separator){
 	p = buff;
 	buff_len -= index;
 	buff = new char[buff_len];
-	memccpy(buff, p+index, buff_len);
+	memcpy(buff, p+index, buff_len);
 	delete p;
 	p = NULL;
 	return value;
 }
 
-void Sd_tokenizer::find_sd_line(const char separator, int index){
+void Sd_tokenizer::find_sd_line( int index, const char separator){
 	int search, indx;
 	do{
-		search = !read_line_sd(buff, buff_len);
-		indx = find_and_remove_index(buff);
+		search = !read_line_sd();
+		indx = find_and_remove_index();
 		if(indx == index){
 			S.SetText(buff);
 			break;
@@ -132,7 +131,7 @@ void Sd_tokenizer::get_string_to_print(char* tkn){
 }
 
 
-void sd_tokenizer::stall(){
+void Sd_tokenizer::stall(){
 	PrintMsg(Info, "the program is at a standstill");
 	while(1);
 }

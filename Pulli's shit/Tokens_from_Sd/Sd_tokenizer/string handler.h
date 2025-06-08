@@ -27,14 +27,14 @@ using namespace std;
 
 ///TODO: sarebbe fico se ogni funzione restituisse una string da stampare in caso di errore
 
-const int MAX_STRING = 1024; 
+const int MAX_STRING = 64; 
 const int MAX_TRY    = 30;
 
 
 class string_handler
 {
 protected:
-    char buffer[MAX_STRING];
+    char* buffer;
     int rows = 2;
     int cols = 16;
     int current_pos = 0;

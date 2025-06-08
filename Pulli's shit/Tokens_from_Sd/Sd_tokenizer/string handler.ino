@@ -6,12 +6,16 @@
 /// @param c columns
 string_handler::string_handler(int r, int c){
     Init(r,c);
-    
+    buffer = new char[r*c + 5];
 }
 
 /// @brief destructor
 string_handler::~string_handler()
 {
+    if(buffer){
+        delete buffer;
+        buffer = NULL;
+    }
 }
 
 /// @brief Initialize all variables

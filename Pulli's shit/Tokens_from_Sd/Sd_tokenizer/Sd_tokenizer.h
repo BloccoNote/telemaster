@@ -5,7 +5,7 @@
 #include<SPI.h>
 #include<SD.h>
  
-#define _ARDUNIO_
+#define _ARDUINO_
 #include "string handler.h"
 
 typedef enum {
@@ -21,7 +21,7 @@ private:
 	int cs_sd_pin;
 	char* buff = NULL;
 	int buff_len;
-	FILE fileptr;
+	File fileptr;
 	string_handler S;
 
 public:
@@ -33,7 +33,7 @@ public:
 	int read_line_sd();
 	int find_index(const char separator = ' ');
 	int find_and_remove_index(const char separator = ' ');
-	void find_sd_line(const char separator = ' ', int index);
+	void find_sd_line(int index, const char separator = ' ');
 	void get_string_to_print(char* tkn);
 
 
