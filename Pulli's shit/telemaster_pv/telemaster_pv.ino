@@ -73,8 +73,8 @@ int read_line_sd(char* &buff , int &length){
 	char current_char = 0;
 	while(current_char != '\n'){
 		if(Fileptr.available() <= 1){ //<= 1 handle "\n\0" scenarios
-			 return_val = 1;
-			 break;
+			return_val = 1;
+			break;
 		}
 		current_char = Fileptr.read();
 	}
