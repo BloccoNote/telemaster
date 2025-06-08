@@ -1,4 +1,4 @@
-#include <Adafruit_LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
 #include <time.h>
 
 #define INTERRUPT_PIN 3
@@ -7,8 +7,12 @@
 /*
 
 NOTE: I valori valgono per le resistenze date. Funzionano in SIMULAZIONE SU THINKERCAD, non ho provato irl :
-Link per il circuito su thinkercad (NON MODIFICARE)
+Link per il circuito su thinkercad (NON MODIFICARE)                                                           <-- modo 100% safe per non farsi cuzzare il circuito di thinker cad
  https://www.tinkercad.com/things/eSHNgc3p2s1-telemaster?sharecode=-aP5_nGmigwwymauiQA1TFkWA68BaPdvQ_gAVPeCcEM
+
+ testando su arduino nano conviene usare valori sotto al 1kohm perché altrimenti il valore del voltaggio è troppo basso per triggerare l'irnterrupt
+ cambiato da adafruit a liquidcrystal i2c
+
 == circuit ==
 
          Analog pin 1
@@ -17,16 +21,17 @@ Ground--1K--|--------|--------|-------|
             |        |        |       |
            btn1     btn2     btn3    btn4 
             |        |        |       |    
-         220 Ohm  330 Ohm  680 Ohm   1.0K 
+         100 Ohm  220 Ohm  330 Ohm   680 Ohm 
             |--------|--------|-------|----- +5V
 
 
   NOTE: if you whant to use different resistence values you have to calibrate it agan
 */
 
-Adafruit_LiquidCrystal Lcd(0);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 volatile bool button_pressed = false;
 int value, mode, index_value = 0;
+float val;
 //multiple interrupt per button
 volatile bool enalble_interrupt = true;
 time_t int_time;
@@ -34,7 +39,7 @@ time_t int_time;
 /*
 void handleInterrupt(){
   if(enalble_interrupt){
-    enalble_interrupt = false;
+    enalble_interrupt = false;Serial.println(value);
   	int_time = millis();
   }
   if(millis() - int_time > 50){
@@ -57,8 +62,8 @@ void setup()
   Serial.begin(9600);
   while(!Serial);
   attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), (handleInterrupt) , RISING);
-  Lcd.begin(16, 2);
-  Lcd.setBacklight(1);
+  lcd.init();
+  lcd.backlight();
 }
 
 
@@ -72,31 +77,31 @@ void loop(){
     //Serial.println("INSIDE BODY");
     if(value != 0 && value != index_value){
       switch (value){
-        case 3:
-          Serial.println("Button 1 pressed!\n");
-          Lcd.setCursor(0,0);
-          Lcd.print("Butt 1");
-          index_value = value;
-          break;
-
         case 4:
-          Serial.println("Button 2 pressed!\n");
-          Lcd.setCursor(0,0);
-          Lcd.print("Butt 2");
+          Serial.println("Button 1 pressed!\n");
+          lcd.setCursor(0,0);
+          lcd.print("Butt 1");
           index_value = value;
           break;
 
         case 5:
-          Serial.println("Button 3 pressed!\n");
-          Lcd.setCursor(0,0);
-          Lcd.print("Butt 3");
+          Serial.println("Button 2 pressed!\n");
+          lcd.setCursor(0,0);
+          lcd.print("Butt 2");
           index_value = value;
           break;
 
         case 6:
+          Serial.println("Button 3 pressed!\n");
+          lcd.setCursor(0,0);
+          lcd.print("Butt 3");
+          index_value = value;
+          break;
+
+        case 7:
           Serial.println("Button 4 pressed!\n");
-          Lcd.setCursor(0,0);
-          Lcd.print("Butt 4");
+          lcd.setCursor(0,0);
+          lcd.print("Butt 4");
           index_value = value;
           break;
 
