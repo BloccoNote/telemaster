@@ -1,11 +1,17 @@
 #include "Sd_tokenizer.h"
 
 
+/// @brief Constructor
+/// @param cs_pin The cs pin of sd card reader
+/// @param filename The file in the sd to be opened
+/// @param r rows of display
+/// @param c columnd of display
 Sd_tokenizer::Sd_tokenizer(int cs_pin, const char* filename, int r, int c) : buff(NULL){
 	Init(cs_pin, filename);
 	S.Init(r,c);
 }
 
+/// @brief destructor
 Sd_tokenizer::~Sd_tokenizer(){
 	if(buff != NULL){
 		delete buff;
@@ -14,6 +20,9 @@ Sd_tokenizer::~Sd_tokenizer(){
 	SD.end();
 }
 
+/// @brief initialize all sd_tokenizer variables
+/// @param cs_pin The cs pin of sd card reader
+/// @param filename The file in the sd to be opened
 void Sd_tokenizer::Init(int cs_pin, const char* filename){
 	if(filename == NULL || cs_pin < 0) stall();
 	if(!SD.begin(cs_pin)){
@@ -25,15 +34,19 @@ void Sd_tokenizer::Init(int cs_pin, const char* filename){
 	fileptr = SD.open(filename, FILE_READ);
 }
 
-
+/// @brief reads a line form the sd card
+/// @return 1 if EOF
 int Sd_tokenizer::read_line_sd(){
 	if(buff != NULL){
 		delete buff; //if buff pointer is not initialized with null it crashes here
+		buff = NULL;
 	}
+	
 	int return_val = 0;
 	unsigned long starting_position = fileptr.position();
 	unsigned long end_position = 0;
 	char current_char = 0;
+
 	while(current_char != '\n'){
 		if(fileptr.available() <= 1){ //<= 1 handle "\n\0" scenarios
 			return_val = 1;
@@ -41,19 +54,25 @@ int Sd_tokenizer::read_line_sd(){
 		}
 		current_char = fileptr.read();
 	}
+
 	end_position = fileptr.position();
+
 	if(starting_position > end_position){
 		PrintMsg(Error, "end of line should be higher than start of line");
 		stall();
 	}
+
 	buff_len = end_position - starting_position;
 	buff = new char [buff_len];
+
 	if(!fileptr.seek(starting_position)){
 		PrintMsg(Error, "error in seek() method");
 		stall();
 	}
+
 	fileptr.read(buff, buff_len);
 	buff[buff_len-1] = '\0';
+	
 	return return_val;
 }
 
