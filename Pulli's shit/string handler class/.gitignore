@@ -1,6 +1,0 @@
-#vs code compiler
-.vscode
-
-#binary files
-*.exe
-bin

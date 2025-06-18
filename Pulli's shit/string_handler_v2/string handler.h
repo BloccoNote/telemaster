@@ -28,23 +28,18 @@ using namespace std;
 ///TODO: sarebbe fico se ogni funzione restituisse una string da stampare in caso di errore
 
 const int MAX_STRING = 1024; 
-const int MAX_TRY    = 30;
+const int MAX_TRY    = 10;
 
 
 class string_handler
 {
 protected:
-    char buffer[MAX_STRING];
+    char buffer[MAX_STRING], *ptr;
     int rows = 2;
     int cols = 16;
     int current_pos = 0;
     int current_row = 0;
     int text_len = 0;
-    #ifndef _ARDUINO_ 
-    vector<char> final_buffer;
-    #else
-    Vector<char> final_buffer;
-    #endif
 
 public:
     string_handler(int r = 2, int c = 16);
@@ -54,7 +49,7 @@ public:
     void clear_buffers();
     void SetText(char* in);
 
-    bool Get_print_token(char* tkn);
+    bool Get_print_token(char** lcd_lines);
 
 
     /// @name UTILITY FUNCTIONS
@@ -64,8 +59,6 @@ public:
     void copy_string(char* dest,char* source);
     int find_string_len(const char* str, char end_char = '\0');
 
-    void apend_string_to_vector(char* str, int len);
-    void convert_char_vector_to_string(char* buff);
     ///@}
 };
 

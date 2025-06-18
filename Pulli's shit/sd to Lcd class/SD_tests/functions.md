@@ -1,65 +1,40 @@
-#include "Sd_tokenizer.h"
-
-
-/// @brief Constructor
-/// @param cs_pin The cs pin of sd card reader
-/// @param filename The file in the sd to be opened
-/// @param r rows of display
-/// @param c columnd of display
-Sd_tokenizer::Sd_tokenizer(int cs_pin, const char* filename, int r, int c) : buff(NULL){
-	Init(cs_pin, filename);
-	S.Init(r,c);
-}
-
-/// @brief destructor
-Sd_tokenizer::~Sd_tokenizer(){
-	if(buff != NULL){
-		delete buff;
-		buff = NULL;
-	}
-	SD.end();
-}
-
-/// @brief initialize all sd_tokenizer variables
-/// @param cs_pin The cs pin of sd card reader
-/// @param filename The file in the sd to be opened
-void Sd_tokenizer::Init(int cs_pin, const char* filename){
-	if(filename == NULL || cs_pin < 0) stall();
-	if(!SD.begin(cs_pin)){
-		PrintMsg(Error, "Connection failed with SD Card");
-		//stall the program
-		stall();
-	}
-	PrintMsg(Info, "SD connection successfully established");
+bool init_sd_read(const char* filename){
+  if(filename == NULL) return false;
+  if(!SD.begin(CS_SD_PIN)){
+    Serial.println("[ ERROR ] connection failed with SD card");
+    return false;
+  }
+  Serial.println("[ INFO ] SD connection successfully established");
 	fileptr = SD.open(filename, FILE_READ);
+  return true;
 }
 
 /// @brief reads a line form the sd card
-/// @return 1 if EOF
-int Sd_tokenizer::read_line_sd(){
+/// @return false if EOF
+bool read_line_sd(){
 	if(buff != NULL){
 		delete buff; //if buff pointer is not initialized with null it crashes here
 		buff = NULL;
 	}
 	
-	int return_val = 0;
+	bool return_val = true;
 	unsigned long starting_position = fileptr.position();
 	unsigned long end_position = 0;
 	char current_char = 0;
 
 	while(current_char != '\n'){
 		if(fileptr.available() <= 1){ //<= 1 handle "\n\0" scenarios
-			return_val = 1;
+			return_val = false;
 			break;
 		}
 		current_char = fileptr.read();
 	}
 
-	end_position = fileptr.position();
+	end_position = fileptr.position() + 1; // include the \n character
 
 	if(starting_position > end_position){
 		PrintMsg(Error, "end of line should be higher than start of line");
-		stall();
+    stall();
 	}
 
 	buff_len = end_position - starting_position;
@@ -79,7 +54,7 @@ int Sd_tokenizer::read_line_sd(){
 /// @brief converts all characters up to the first appearance of the 'separator' character to integers
 /// @param separator separates integers from chars
 /// @return the value
-int Sd_tokenizer::find_index(char separator){
+int find_index(char separator){
 	int index;
 	char* p;
 	int value = 0;
@@ -101,7 +76,7 @@ int Sd_tokenizer::find_index(char separator){
 	return value;
 }
 
-int Sd_tokenizer::find_and_remove_index(char separator){
+int find_and_remove_index(char separator){
 	int index;
 	char* p = NULL;
 	int value = 0;
@@ -131,31 +106,14 @@ int Sd_tokenizer::find_and_remove_index(char separator){
 	return value;
 }
 
-void Sd_tokenizer::find_sd_line( int index, const char separator){
-	int search, indx;
-	do{
-		search = !read_line_sd();
-		indx = find_and_remove_index();
-		if(indx == index){
-			S.SetText(buff);
-			break;
-		}
-		//debug staff
-	}while(search);
-	if(!search) PrintMsg(Warning, "no string found with index given");
-}
 
-void Sd_tokenizer::get_string_to_print(char* tkn){
-	S.Get_print_token(tkn);
+void stall(){
+  Serial.println("[ ERROR ] program is stalled");
+  while(1);
 }
 
 
-void Sd_tokenizer::stall(){
-	PrintMsg(Info, "the program is at a standstill");
-	while(1);
-}
-
-void Sd_tokenizer::PrintMsg(Rep msgtype, const char* msg){
+void PrintMsg(Rep msgtype, const char* msg){
 	const char* Types[]= {
 		"[ ERROR ] ",
 		"[ INFO ] ",
