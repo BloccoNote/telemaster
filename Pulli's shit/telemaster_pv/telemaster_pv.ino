@@ -1,144 +1,183 @@
-/// @file telemaster_pv.ino
-/// @brief contains usefull function to read strings from sd card
-/// @note it follows this convention <index>'separator'<string>'\n' \n
-/// example: 001-this example is usefull \n
-/// example: 1@wow, this is crazy \n
-/// example: 01 more usefull example \n
-/// in example 1 separator is '-', in ex 2 is '@' ecc. \name
-/// @authors Pulli & Gori
+#include <LiquidCrystal_I2C.h>
+//#include <time.h>
+#include "sd_to_lcd.h"
+#include <stdlib.h>
+#include <time.h>
 
+#define INTERRUPT_PIN 2
+#define ANALOG_BUTTON_PIN A7
+#define CS_SD_PIN 7
+#define FILE_NAME "test.txt"
 
-#include<SPI.h>
-#include<SD.h>
-#include<string.h>
+/*
 
-#define CS_SD_PIN 10 //pin of CS pin of SD reader
-#define BUTTON_PIN 3 // ...
-#define FILE_NAME "test.txt" 
-#define SEARCH_INDEX 24
+NOTE: I valori valgono per le resistenze date. Funzionano in SIMULAZIONE SU THINKERCAD, non ho provato irl :
+Link per il circuito su thinkercad (NON MODIFICARE)                                                           <-- modo 100% safe per non farsi cuzzare il circuito di thinker cad
+ https://www.tinkercad.com/things/eSHNgc3p2s1-telemaster?sharecode=-aP5_nGmigwwymauiQA1TFkWA68BaPdvQ_gAVPeCcEM
 
-/* content of test .txt
-	001 test1
-	002 test2
-	3 test3
-	00015 test4
-	110 test5
-	111 test6
-	0024 test7
-	1101  test8
+ testando su arduino nano conviene usare valori sotto al 1kohm perché altrimenti il valore del voltaggio è troppo basso per triggerare l'irnterrupt
+ cambiato da adafruit a liquidcrystal i2c
+
+== circuit for multiple buttons==
+
+         Analog pin 1
+            |
+Ground--1K--|--------|--------|-------|
+            |        |        |       |
+           btn1     btn2     btn3    btn4 
+            |        |        |       |    
+            |     100 Ohm   220 Ohm  330 Ohm
+            |--------|--------|-------|----- +5V
+
+  NOTE: if you whant to use different resistence values you have to calibrate it agan
+
+== LCD_I2C display ==
+ - ON ARDUINO nano
+    SDA_pin -> Analog pin 4
+    SCL_pin -> Analog pin 5
+
+== SD Cconfig =======
+ - ON ARDUINO nano
+	MOSI -> D11
+	MISO -> D12
+	SCK  -> D13
 */
 
-File Fileptr; 
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+sd2Lcd S;
+char* tkn[2];
+char* buff = NULL;
+bool end;
+volatile bool button_pressed = false;
+int value, mode, index_value = 0;
+float val;
 
-void setup(){
-	//in case of debug use     while(!digitalRead(BUTTON_PIN));
-	pinMode(BUTTON_PIN, INPUT);
+//multiple interrupt per button
+volatile bool enalble_interrupt = true;
+time_t int_time;
 
-	//Serial handler
-	Serial.begin(9600);
-	Serial.println("[ INFO ] waiting for serial connection");
-	while(!Serial);
-	Serial.println("[ INFO ] successful serial connection");
-
-	//SD handler
-	if(!SD.begin(CS_SD_PIN)){
-		Serial.println("[ ERROR ] Connection failed with SD Card");
-		//stall the program
-		stall();
-	}
-	Serial.println("[ INFO ] SD connection successfully established");
-	Fileptr = SD.open(FILE_NAME, FILE_READ);
-	if(FILE_NAME == NULL) stall();
+/* incorportes an anti-bouncing functions to button*/
+void handleInterrupt(){
+  if(enalble_interrupt){
+    enalble_interrupt = false;
+  	int_time = millis();
+  }
+  if(millis() - int_time > 70){
+  	button_pressed = true;
+  	Serial.println("INTERRUPT!");
+    enalble_interrupt = true;
+  }
 }
 
-/// @brief stalls the program: it's litteraly a while(1);
-void stall(){
-	Serial.println("[ INFO ] the program is at a standstill");
-	while(1);
+/*
+void handleInterrupt(){
+  button_pressed = true;
+}
+*/
+
+byte backslash[8] = {
+  B00000,
+  B10000,
+  B01000,
+  B00100,
+  B00010,
+  B00001, 
+  B00000,
+  B00000
+};
+
+
+void wait(size_t time_ms){
+  time_t time = millis();
+  while(millis() - time < time_ms && !button_pressed);
 }
 
-/// @brief reads from sd card untill it finds a '\n' or the end of file
-/// @param buff pointer ONLY to string
-/// @param length is filled with buff length 
-/// @return 0 if no error, stall if error, 1 if reached end of file
-/// @note buff pointer when initialized MUST be set to NULL!!!!
-/// @bug last character of file will be lost safe if it's a '\n' or ' ' character
-int read_line_sd(char* &buff , int &length){
-	if(buff != NULL){
-		delete buff; //if buff pointer is not initialized with null it crashes here
-	}
-	int return_val = 0;
-	unsigned long starting_position = Fileptr.position();
-	unsigned long end_position = 0;
-	char current_char = 0;
-	while(current_char != '\n'){
-		if(Fileptr.available() <= 1){ //<= 1 handle "\n\0" scenarios
-			return_val = 1;
-			break;
-		}
-		current_char = Fileptr.read();
-	}
-	end_position = Fileptr.position();
-	if(starting_position > end_position){
-		Serial.println("[ ERROR ] end of line should be higher than start of line");
-		stall();
-	}
-	length = end_position - starting_position;
-	buff = new char [length];
-	if(!Fileptr.seek(starting_position)){
-		Serial.println("[ ERROR ] error in seek() method");
-		stall();
-	}
-	Fileptr.read(buff, length);
-	buff[length-1] = '\0';
-	return return_val;
+
+void setup()
+{
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(ANALOG_BUTTON_PIN, INPUT);
+  // serial
+  Serial.begin(9600);
+  while(!Serial);
+  Serial.println("Serial OK!");
+  // interrupt
+  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), (handleInterrupt) , RISING);
+  // lcd
+  lcd.init();
+  lcd.backlight();
+  lcd.createChar(0, backslash); // Store the custom backslash character
+  // sd2Lcd
+  if(!S.init_sd_read(FILE_NAME, CS_SD_PIN)) S.stall();
+  tkn[0] = new char[17];
+  tkn[1] = new char[17];
+  //rand
+  randomSeed(analogRead(0));
 }
 
-/// @brief converts all characters up to the first appearance of the 'separator' character to integers
-/// @param buff string of characters
-/// @param separator separates integers from chars
-/// @return the value
-int find_index(char buff[], char separator = ' '){
-	int index;
-	char* p;
-	int value = 0;
-	int exp = 1;
-	if(!(p = strchr(buff, separator))){
-		Serial.println("[ ERROR ] seprator character is not in the buffer");
-		stall();
-	}
-	index = p - buff -1;
-	for(int i = 0; i <= index ; i++){
-		switch(buff[i]){
-			case '0':
-			break;
-			default:
-				value *= 10;
-				value += (buff[i] - '0');
-			break;
-		}
-	}
-	return value;
-}
 
-void loop() {
-	char* buff = NULL;
-	int len = 0;
-	int index = 0;
-	int search;
-	do{
-		search = !read_line_sd(buff, len);
-		index = find_index(buff);
-		if(index == SEARCH_INDEX){
-			Serial.println("FOUND THE STRING!");
-			Serial.println(buff+4);
-			break;
-		}
-		//debug staff
-	}while(search);
-	if(!search) Serial.println("no string found with index given");
-	delete buff;
-	Fileptr.close();
-	stall();
-}
+void loop(){
+  if(button_pressed){
+    mode = analogRead(ANALOG_BUTTON_PIN);
+  	value = mode / 100;
+    if(value != 0 && value != index_value){
+      lcd.clear();
+      switch (value){
+        case 7:
+        {
+        button_pressed  = false;
+        int indx = random(0, 12);
+        S.find_sd_line_by_index(buff, indx, ' ');
+        S.SetText(buff);
+        lcd.clear();
+        while(!button_pressed){
+          do{
+            end = S.Get_print_token(tkn);
+            lcd.setCursor(0,0);
+            lcd.print(tkn[0]);
+            lcd.setCursor(0,1);
+            lcd.print(tkn[1]);
+            wait(2000);
+            if(end) lcd.clear();
+          }while(end && !button_pressed);
+          S.reset_print_token();
+        }
+          index_value = value;
+        break;
+        }
+        case 8:
+        {
+          button_pressed = false;
+          char loading[] = {'-', byte(0), '|', '/', '\0'};
+          int i = 0;
+          lcd.setCursor(4,0);
+          lcd.print("Loading...");
+          while(!button_pressed){
+            lcd.setCursor(7,1);
+            lcd.print(loading[i++]);
+            wait(600);
+            if(i > 3) i = 0;
+          }
+          index_value = value;
+          break;
+        }
+        case 9:
+          lcd.setCursor(0,0);
+          lcd.print("Butt 3");
+          index_value = value;
+          break;
 
+        case 10:
+          lcd.setCursor(0,0);
+          lcd.print("Butt 4");
+          index_value = value;
+          break;
+
+        default:
+          break;
+      }
+      delay(300);
+    }
+    button_pressed = false;
+  }
+}
