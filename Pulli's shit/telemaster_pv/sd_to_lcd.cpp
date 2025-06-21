@@ -29,7 +29,7 @@ void sd2Lcd::Init(int r, int c){
   current_pos = 0;
   current_row = 0;
   if(buffer != NULL){
-    delete buffer;
+    delete [] buffer;
     buffer = NULL;
   }
   ptr = NULL;
@@ -68,7 +68,7 @@ bool sd2Lcd::init_sd_read(const char* filename, int cs_pin){
 /// @return false if EOF
 bool sd2Lcd::read_line_sd(char *&buff){
 	if(buff != NULL){
-		delete buff; //if buff pointer is not initialized with null it crashes here
+		delete[] buff; //if buff pointer is not initialized with null it crashes here
 		buff = NULL;
 	}
 	
@@ -169,7 +169,7 @@ int sd2Lcd::find_and_remove_index(char* &buff, const char separator){
 	buff_len -= index;
 	buff = new char[buff_len];
 	memcpy(buff, p+index+1, buff_len);
-	delete p;
+	delete[] p;
 	p = NULL;
 	return value;
 }
@@ -186,10 +186,10 @@ bool sd2Lcd::find_sd_line_by_index(char* &buff,  int index, const char separator
   fileptr.seek(SEEK_SET);
 	do{
 		search = read_line_sd(buff);
-		indx = find_and_remove_index(buff, separator);
+		indx = find_index(buff, separator);
 		if(indx == index){
+      find_and_remove_index(buff, separator);
 			SetText(buff);
-      Serial.println(buff);
       return true;
 		}
 	}while(search);
@@ -212,7 +212,7 @@ void sd2Lcd::SetText(char* in){
     //Init(rows, cols);
     text_len = find_string_len(in, '\0');
     if(buffer != NULL){
-      delete buffer;
+      delete[] buffer;
       buffer = NULL;
     }
     buffer = new char[text_len+1];

@@ -20,7 +20,8 @@ Link per il circuito su thinkercad (NON MODIFICARE)                             
 
 == circuit for multiple buttons==
 
-         Analog pin 1
+         Analog pin 7  interrutp pin (D2 o 3)
+            |______________|
             |
 Ground--1K--|--------|--------|-------|
             |        |        |       |
@@ -41,6 +42,7 @@ Ground--1K--|--------|--------|-------|
 	MOSI -> D11
 	MISO -> D12
 	SCK  -> D13
+  #define CS_SD_PIN 7
 */
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -48,6 +50,7 @@ sd2Lcd S;
 char* tkn[2];
 char* buff = NULL;
 bool end;
+bool BackLight;
 volatile bool button_pressed = false;
 int value, mode, index_value = 0;
 float val;
@@ -56,22 +59,27 @@ float val;
 volatile bool enalble_interrupt = true;
 time_t int_time;
 
-/* incorportes an anti-bouncing functions to button*/
+/* incorportes an anti-bouncing functions to button */
 void handleInterrupt(){
   if(enalble_interrupt){
+    int_time = millis();
     enalble_interrupt = false;
-  	int_time = millis();
   }
-  if(millis() - int_time > 70){
+  if(millis() - int_time > 25){
   	button_pressed = true;
-  	Serial.println("INTERRUPT!");
     enalble_interrupt = true;
+    mode = analogRead(ANALOG_BUTTON_PIN);
+  	value = mode / 100;
   }
 }
 
-/*
+
+/* NO anti-debouce 
 void handleInterrupt(){
   button_pressed = true;
+  mode = analogRead(ANALOG_BUTTON_PIN);
+  value = mode / 100;
+  Serial.println(value);
 }
 */
 
@@ -92,6 +100,18 @@ void wait(size_t time_ms){
   while(millis() - time < time_ms && !button_pressed);
 }
 
+void backl(){
+  if(BackLight) return;
+  BackLight = true;
+  lcd.backlight();
+}
+
+void Nobackl(){
+  if(!BackLight) return;
+  BackLight = false;
+  lcd.clear();
+  lcd.noBacklight();
+}
 
 void setup()
 {
@@ -100,7 +120,7 @@ void setup()
   // serial
   Serial.begin(9600);
   while(!Serial);
-  Serial.println("Serial OK!");
+  S.PrintMsg(Info, "OK Ser");
   // interrupt
   attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), (handleInterrupt) , RISING);
   // lcd
@@ -117,67 +137,71 @@ void setup()
 
 
 void loop(){
-  if(button_pressed){
-    mode = analogRead(ANALOG_BUTTON_PIN);
-  	value = mode / 100;
-    if(value != 0 && value != index_value){
-      lcd.clear();
-      switch (value){
-        case 7:
-        {
-        button_pressed  = false;
-        int indx = random(0, 12);
-        S.find_sd_line_by_index(buff, indx, ' ');
-        S.SetText(buff);
-        lcd.clear();
-        while(!button_pressed){
-          do{
-            end = S.Get_print_token(tkn);
-            lcd.setCursor(0,0);
-            lcd.print(tkn[0]);
-            lcd.setCursor(0,1);
-            lcd.print(tkn[1]);
-            wait(2000);
-            if(end) lcd.clear();
-          }while(end && !button_pressed);
-          S.reset_print_token();
-        }
-          index_value = value;
-        break;
-        }
-        case 8:
-        {
-          button_pressed = false;
-          char loading[] = {'-', byte(0), '|', '/', '\0'};
-          int i = 0;
-          lcd.setCursor(4,0);
-          lcd.print("Loading...");
-          while(!button_pressed){
-            lcd.setCursor(7,1);
-            lcd.print(loading[i++]);
-            wait(600);
-            if(i > 3) i = 0;
-          }
-          index_value = value;
-          break;
-        }
-        case 9:
-          lcd.setCursor(0,0);
-          lcd.print("Butt 3");
-          index_value = value;
-          break;
-
-        case 10:
-          lcd.setCursor(0,0);
-          lcd.print("Butt 4");
-          index_value = value;
-          break;
-
-        default:
-          break;
+  if(value != 0 && value != index_value){
+    lcd.clear();
+    backl();
+    switch (value){
+      case 7:
+      {
+      button_pressed  = false;
+      index_value = value;
+      int indx = random(0, 12);
+      if(buff != NULL){
+        delete buff;
+        buff = NULL;
       }
-      delay(300);
+      S.find_sd_line_by_index(buff, indx, ' ');
+      lcd.clear();
+      while(!button_pressed){
+        do{
+          end = S.Get_print_token(tkn);
+          lcd.setCursor(0,0);
+          lcd.print(tkn[0]);
+          lcd.setCursor(0,1);
+          lcd.print(tkn[1]);
+          wait(2000);
+          if(end) lcd.clear();
+        }while(end && !button_pressed);
+        S.reset_print_token();
+      }
+      break;
+      }
+      case 8:
+      {
+        button_pressed = false;
+        index_value = value;
+        char loading[] = {'-', byte(0), '|', '/', '\0'};
+        int i = 0;
+        lcd.setCursor(4,0);
+        lcd.print("Loading...");
+        while(!button_pressed){
+          lcd.setCursor(7,1);
+          lcd.print(loading[i++]);
+          wait(600);
+          if(i > 3) i = 0;
+        }
+        break;
+      }
+      case 9:
+        index_value = value;
+        button_pressed = false;
+        do{
+          lcd.setCursor(0,0);
+          lcd.print("Siete Fottuti!");
+          BackLight ? Nobackl() : backl();
+          wait(1000);
+        }while(!button_pressed);
+        break;
+
+      case 10:
+        index_value = value;
+        Nobackl();
+        break;
+
+      default:
+        break;
     }
-    button_pressed = false;
+    delay(100);
   }
+  button_pressed = false;
 }
