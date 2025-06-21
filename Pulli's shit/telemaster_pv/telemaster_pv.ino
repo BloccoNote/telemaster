@@ -1,3 +1,5 @@
+//TELEMASTER V 1.01
+
 #include <LiquidCrystal_I2C.h>
 //#include <time.h>
 #include "sd_to_lcd.h"
@@ -129,8 +131,11 @@ void setup()
   lcd.createChar(0, backslash); // Store the custom backslash character
   // sd2Lcd
   if(!S.init_sd_read(FILE_NAME, CS_SD_PIN)) S.stall();
-  tkn[0] = new char[17];
-  tkn[1] = new char[17];
+  // static allocation >> dynamic for necessary stuff
+  char row1[17] = {0};
+  char row2[17] = {0};
+  tkn[0] = row1;
+  tkn[1] = row2;
   //rand
   randomSeed(analogRead(0));
 }
@@ -146,11 +151,9 @@ void loop(){
       button_pressed  = false;
       index_value = value;
       int indx = random(0, 12);
-      if(buff != NULL){
-        delete buff;
-        buff = NULL;
-      }
       S.find_sd_line_by_index(buff, indx, ' ');
+      delete[] buff;
+      buff = NULL;
       lcd.clear();
       while(!button_pressed){
         do{

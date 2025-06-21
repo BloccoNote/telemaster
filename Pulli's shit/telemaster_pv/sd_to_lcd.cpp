@@ -2,26 +2,36 @@
 
 ///@name CONSTRUCTORS AND DESTRUCTORS IMPLEMENTATIONS
 
+/// @brief Constructor
+/// @param r lcd rows (default 2)
+/// @param c lcd cols (default 16)
 sd2Lcd::sd2Lcd(int r, int c){
   Init(r,c);
 }
 
+/// @brief copy constructor
+/// @param X 
 sd2Lcd::sd2Lcd(const sd2Lcd &X){
   Init(X);
 }
 
+/// @brief destructor
 sd2Lcd::~sd2Lcd(){
   Init(0,0);
 }
 
 /// @name INITS IMPLEMENTATIONS
 
+/// @brief Initialize object
+/// @param r lcd rows (default 2)
+/// @param c lcd cols (default 16)
 void sd2Lcd::Init(int r, int c){
   if(r <= 0 || c <= 0){
     PrintMsg(Error, "r & c >= 0 ?");
     r = 2;
     c = 16;
   }
+  is_sd = false;
   rows = r;
   cols = c;
   buff_len = 0; 
@@ -29,14 +39,17 @@ void sd2Lcd::Init(int r, int c){
   current_pos = 0;
   current_row = 0;
   if(buffer != NULL){
-    delete [] buffer;
+    delete[] buffer;
     buffer = NULL;
   }
   ptr = NULL;
 }
 
+/// @brief Initiaize object with another one
+/// @param X 
 void sd2Lcd::Init(const sd2Lcd &X){
   Init(X.rows, X.cols);
+  is_sd = X.is_sd;
   buff_len = X.buff_len;
   text_len = X.text_len;
   current_pos = X.current_pos;
@@ -50,6 +63,10 @@ void sd2Lcd::Init(const sd2Lcd &X){
 
 /// @name SD FUNCTIONS IMPLEMENTATIONS
 
+/// @brief Initialize sd reader
+/// @param filename name of file in sd [directory-s/] filename.<extention>
+/// @param cs_pin   Arduino pin for sd CS pin
+/// @return false if error
 bool sd2Lcd::init_sd_read(const char* filename, int cs_pin){
   if(filename == NULL) return false;
   if(!SD.begin(cs_pin)){
@@ -59,6 +76,7 @@ bool sd2Lcd::init_sd_read(const char* filename, int cs_pin){
   PrintMsg(Info, "OK SD");
 	fileptr = SD.open(filename, FILE_READ);
   fileptr.seek(SEEK_SET);
+  is_sd = true;
   return true;
 }
 
@@ -66,7 +84,12 @@ bool sd2Lcd::init_sd_read(const char* filename, int cs_pin){
 /// @brief reads a line form the sd card
 /// @param buff Null pointer to char
 /// @return false if EOF
+/// @note init_sd_read(filename, cs_pin) must be called before
 bool sd2Lcd::read_line_sd(char *&buff){
+  if(!is_sd){
+    PrintMsg(Error,"No SD_init");
+    stall();
+  }
 	if(buff != NULL){
 		delete[] buff; //if buff pointer is not initialized with null it crashes here
 		buff = NULL;
@@ -110,10 +133,15 @@ bool sd2Lcd::read_line_sd(char *&buff){
 	return return_val;
 }
 
-/// @brief converts all characters up to the first appearance of the 'separator' character to integers
-/// @param separator separates integers from chars
+/// @brief finds index of a given string
+/// @param separator char that separates index field to text field
 /// @param buff result of read_line_sd() function
-/// @return the value
+/// @return value in index field
+/// @note [ 0 index]< 1 sep_char>[ 2 text]
+/// @example                   \n
+/// 0001 hello,word!           \n
+///  ^  ^     ^                \n
+///  0  1     2                \n
 int sd2Lcd::find_index(char* buff, const char separator){
   if(buff == NULL){
     PrintMsg(Error, "got NULL buff");
@@ -138,10 +166,16 @@ int sd2Lcd::find_index(char* buff, const char separator){
 	return value;
 }
 
-/// @brief converts all characters up to the first appearance of the 'separator' character to integers end eliminates them from buff
-/// @param separator separates integers from chars
+
+/// @brief finds index and removes it from a given string
+/// @param separator char that separates index field to text field
 /// @param buff result of read_line_sd() function
-/// @return the value
+/// @return value in index field
+/// @note [ 0 index]< 1 sep_char>[ 2 text]
+/// @example                   \n
+/// 0001 hello,word!           \n
+///  ^  ^     ^                \n
+///  0  1     2                \n
 int sd2Lcd::find_and_remove_index(char* &buff, const char separator){
   if(buff == NULL){
     PrintMsg(Error, "got NULL buff");
@@ -175,11 +209,11 @@ int sd2Lcd::find_and_remove_index(char* &buff, const char separator){
 }
 
 /// @brief does exactly what the name suggests
-/// @param buff NULL pointer to char
+/// @param buff NULL pointer only to char
 /// @param index desidered index
-/// @param separator character that divides index and datta, default ' ' (space)
+/// @param separator character that divides index and text, default ' ' (space)
 /// @note it fills the buff with desired data stripped of index and set it to be tokenized
-/// @return true if no error
+/// @return false if error
 bool sd2Lcd::find_sd_line_by_index(char* &buff,  int index, const char separator)
 {
 	int search, indx;
@@ -200,7 +234,7 @@ bool sd2Lcd::find_sd_line_by_index(char* &buff,  int index, const char separator
 
 /// @brief Set text to be tokenized
 /// @param in string of text
-/// @note MUST end with '\0' character
+/// @note 'in' MUST end with '\0' character
 void sd2Lcd::SetText(char* in){
     current_pos = 0;
     current_row = 0;
@@ -225,7 +259,7 @@ void sd2Lcd::SetText(char* in){
 /// @brief finds the lenght of a string utill 'end_char'
 /// @param str the string
 /// @param end_char terminating character, defaulted to '\0'
-/// @return the lenght
+/// @return lenght of string
 int sd2Lcd::find_string_len(const char* str, char end_char){
     const char* endchr = NULL;
     if(str ==  NULL) {
@@ -240,27 +274,11 @@ int sd2Lcd::find_string_len(const char* str, char end_char){
     return (int)(endchr - str);
 }
 
-/*
-/// @brief Safely copy a string to another, memcopy sucks
-/// @param dest destination string
-/// @param source source string
-void sd2Lcd::copy_string(char* dest, char* source){
-    int len;
-    if(dest == NULL || source == NULL){
-        PrintMsg(Error, "source string or destination string is a NULL pointer");
-        return;
-    }
-    if((len = find_string_len(source)) ==0 ) return;
-    for(int i = 0; i < len; i++){
-        dest[i] = source[i];
-    }
-}
-*/
-
 /// @brief Fills the buffer 'lcd_lines' with tokens of 'buffer' so that can fit a display of rows * cols dimentions
 /// @param lcd_lines PREALLOCATED matrix of size rows * (cols + 1)
+/// @note must be rows string of len cols + 1
 /// @return false if end or error
-/// @note the +1 in columns is for '\0' character
+/// @note the + 1 in columns is for '\0' character
 bool sd2Lcd::Get_print_token(char** lcd_lines){
     if(ptr == NULL){
         PrintMsg(Error, "buff = NULL");
@@ -314,6 +332,9 @@ bool sd2Lcd::Get_print_token(char** lcd_lines){
     return true;
 }
 
+/// @brief Clears print status
+/// @note resets printing position so that by calling Get_print_token() \name
+/// you start form the beginnig;
 void sd2Lcd::reset_print_token(){
   ptr = buffer;
   current_pos = 0;
@@ -322,6 +343,9 @@ void sd2Lcd::reset_print_token(){
 
 /// @name UTILILTY FUNCTIONS IMPLEMENTATIONS
 
+/// @brief prints message
+/// @param msgtype 'Error' or 'Info'
+/// @param msg message to be printed
 void sd2Lcd::PrintMsg(Rep msgtype, const char* msg){
 	const char* Types[]= {
 		"[ ERROR ] ",
@@ -332,6 +356,7 @@ void sd2Lcd::PrintMsg(Rep msgtype, const char* msg){
 	Serial.println(msg);
 }
 
+/// @brief stalls the program
 void sd2Lcd::stall(){
   Serial.println("[ ERROR ] program is stalled");
   while(1);
@@ -339,6 +364,9 @@ void sd2Lcd::stall(){
 
 /// @name OVERLOADS
 
+/// @brief overload of operator=
+/// @param X 
+/// @return object copied
 sd2Lcd& sd2Lcd::operator=(const sd2Lcd &X){
   Init(X);
 }
