@@ -1,18 +1,4 @@
-//TELEMASTER V 1.01
-
-#include <LiquidCrystal_I2C.h>
-//#include <time.h>
-#include "sd_to_lcd.h"
-#include <stdlib.h>
-#include <time.h>
-
-#define INTERRUPT_PIN 2
-#define ANALOG_BUTTON_PIN A7
-#define CS_SD_PIN 7
-#define FILE_NAME "test.txt"
-
-/*
-
+/*                    TELEMASTER V 1.02
 NOTE: I valori valgono per le resistenze date. Funzionano in SIMULAZIONE SU THINKERCAD, non ho provato irl :
 Link per il circuito su thinkercad (NON MODIFICARE)                                                           <-- modo 100% safe per non farsi cuzzare il circuito di thinker cad
  https://www.tinkercad.com/things/eSHNgc3p2s1-telemaster?sharecode=-aP5_nGmigwwymauiQA1TFkWA68BaPdvQ_gAVPeCcEM
@@ -47,19 +33,164 @@ Ground--1K--|--------|--------|-------|
   #define CS_SD_PIN 7
 */
 
+#include <LiquidCrystal_I2C.h>
+#include <stdlib.h>
+#include <time.h>
+#include "sd_to_lcd.h"
+
+#define INTERRUPT_PIN 2       //digital pin for interrupt
+#define ANALOG_BUTTON_PIN A7  
+#define CS_SD_PIN 7
+#define FILE_NAME "test.txt"
+
+#define N_SKULL 5 //number of skull to be printed in "sete fottuti" screen
+
+//lcd vars
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+bool BackLight;
+// sd2Lcd vars
 sd2Lcd S;
 char* tkn[2];
 char* buff = NULL;
 bool end;
-bool BackLight;
+// handler vars
 volatile bool button_pressed = false;
-int value, mode, index_value = 0;
+int value, mode, index_value, spacing = 0;
 float val;
-
-//multiple interrupt per button
+//debouncing vars
 volatile bool enalble_interrupt = true;
 time_t int_time;
+
+// CUSTOM LCD CHARS 2 out of 8
+
+byte backslash[8] = {
+  B00000,
+  B10000,
+  B01000,
+  B00100,
+  B00010,
+  B00001, 
+  B00000,
+  B00000
+};
+
+byte skull[8] = {
+  B00000,
+  B01110,
+  B10101,
+  B10101,
+  B11011,
+  B01110,
+  B01010,
+  B00000,
+};
+
+// FUNCTION DECLARATIONS
+void handleInterrupt();
+void wait(size_t time_ms);
+void backl();
+void Nobackl();
+
+void setup()
+{
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(ANALOG_BUTTON_PIN, INPUT);
+  // serial
+  Serial.begin(9600);
+  while(!Serial);
+  S.PrintMsg(Info, "OK Ser");
+  // interrupt
+  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), (handleInterrupt) , RISING);
+  // lcd
+  lcd.init();
+  lcd.backlight();
+  lcd.createChar(0, backslash); // Store the custom character backslash 
+  lcd.createChar(1, skull);     // Store the custom character skull
+  // sd2Lcd
+  if(!S.init_sd_read(FILE_NAME, CS_SD_PIN)) S.stall();
+  // static allocation >> dynamic for necessary stuff
+  char row1[17] = {0};
+  char row2[17] = {0};
+  tkn[0] = row1;
+  tkn[1] = row2;
+  //rand
+  randomSeed(analogRead(0));
+  // estetic shit  --- it centers skulls in "siete fottuti screen"
+  spacing = N_SKULL % 2 ?            \
+            7 - (int)(N_SKULL / 2) : \
+            8 - (int)(N_SKULL / 2) ;
+}
+
+
+void loop(){
+  if(value != 0 && value != index_value){
+    lcd.clear();
+    backl();
+    switch (value){
+      case 7: //                                    RANDOM STRING FROM SD
+      {
+      button_pressed  = false;
+      index_value = value;
+      int indx = random(0, 12);
+      S.find_sd_line_by_index(buff, indx, ' ');
+      delete[] buff;
+      buff = NULL;
+      lcd.clear();
+      while(!button_pressed){
+        do{
+          end = S.Get_print_token(tkn);
+          lcd.setCursor(0,0);
+          lcd.print(tkn[0]);
+          lcd.setCursor(0,1);
+          lcd.print(tkn[1]);
+          wait(2000);
+          if(end) lcd.clear();
+        }while(end && !button_pressed);
+        S.reset_print_token();
+      }
+      break;
+      }
+      case 8: //                                   LOADING SCREEN 
+      {
+        button_pressed = false;
+        index_value = value;
+        char loading[] = {'-', byte(0), '|', '/', '\0'};
+        int i = 0;
+        lcd.setCursor(4,0);
+        lcd.print("Loading...");
+        while(!button_pressed){
+          lcd.setCursor(7,1);
+          lcd.print(loading[i++]);
+          wait(600);
+          if(i > 3) i = 0;
+        }
+        break;
+      }
+      case 9: //                                     "siete Fottuti"
+        index_value = value;
+        button_pressed = false;
+        lcd.setCursor(1,0);
+        lcd.print("Siete Fottuti!");
+        lcd.setCursor(spacing,1);
+        for(int i = 0; i < N_SKULL; i++){ lcd.print((char) byte(1)); }
+        do{
+          BackLight ? Nobackl() : backl();
+          wait(1000);
+        }while(!button_pressed);
+        break;
+      case 10: //                                         LCD OFF
+        index_value = value;
+        lcd.clear();
+        Nobackl();
+        break;
+
+      default:
+        break;
+    }
+    button_pressed = false;
+  }
+  delay(100);
+}
 
 /* incorportes an anti-bouncing functions to button */
 void handleInterrupt(){
@@ -85,18 +216,6 @@ void handleInterrupt(){
 }
 */
 
-byte backslash[8] = {
-  B00000,
-  B10000,
-  B01000,
-  B00100,
-  B00010,
-  B00001, 
-  B00000,
-  B00000
-};
-
-
 void wait(size_t time_ms){
   time_t time = millis();
   while(millis() - time < time_ms && !button_pressed);
@@ -111,100 +230,5 @@ void backl(){
 void Nobackl(){
   if(!BackLight) return;
   BackLight = false;
-  lcd.clear();
   lcd.noBacklight();
-}
-
-void setup()
-{
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(ANALOG_BUTTON_PIN, INPUT);
-  // serial
-  Serial.begin(9600);
-  while(!Serial);
-  S.PrintMsg(Info, "OK Ser");
-  // interrupt
-  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), (handleInterrupt) , RISING);
-  // lcd
-  lcd.init();
-  lcd.backlight();
-  lcd.createChar(0, backslash); // Store the custom backslash character
-  // sd2Lcd
-  if(!S.init_sd_read(FILE_NAME, CS_SD_PIN)) S.stall();
-  // static allocation >> dynamic for necessary stuff
-  char row1[17] = {0};
-  char row2[17] = {0};
-  tkn[0] = row1;
-  tkn[1] = row2;
-  //rand
-  randomSeed(analogRead(0));
-}
-
-
-void loop(){
-  if(value != 0 && value != index_value){
-    lcd.clear();
-    backl();
-    switch (value){
-      case 7:
-      {
-      button_pressed  = false;
-      index_value = value;
-      int indx = random(0, 12);
-      S.find_sd_line_by_index(buff, indx, ' ');
-      delete[] buff;
-      buff = NULL;
-      lcd.clear();
-      while(!button_pressed){
-        do{
-          end = S.Get_print_token(tkn);
-          lcd.setCursor(0,0);
-          lcd.print(tkn[0]);
-          lcd.setCursor(0,1);
-          lcd.print(tkn[1]);
-          wait(2000);
-          if(end) lcd.clear();
-        }while(end && !button_pressed);
-        S.reset_print_token();
-      }
-      break;
-      }
-      case 8:
-      {
-        button_pressed = false;
-        index_value = value;
-        char loading[] = {'-', byte(0), '|', '/', '\0'};
-        int i = 0;
-        lcd.setCursor(4,0);
-        lcd.print("Loading...");
-        while(!button_pressed){
-          lcd.setCursor(7,1);
-          lcd.print(loading[i++]);
-          wait(600);
-          if(i > 3) i = 0;
-        }
-        break;
-      }
-      case 9:
-        index_value = value;
-        button_pressed = false;
-        do{
-          lcd.setCursor(0,0);
-          lcd.print("Siete Fottuti!");
-          BackLight ? Nobackl() : backl();
-          wait(1000);
-        }while(!button_pressed);
-        break;
-
-      case 10:
-        index_value = value;
-        Nobackl();
-        break;
-
-      default:
-        break;
-    }
-    delay(100);
-  }
-  button_pressed = false;
 }
