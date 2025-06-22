@@ -231,7 +231,7 @@ bool sd2Lcd::find_sd_line_by_index(char* &buff,  int index, const char separator
 }
 
 /// @brief rewinds file reading
-bool rewind_file(){
+bool sd2Lcd::rewind_file(){
   return fileptr.seek(SEEK_SET);
 }
 
