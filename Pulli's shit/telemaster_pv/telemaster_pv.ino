@@ -52,8 +52,8 @@ bool BackLight;
 sd2Lcd S;
 char* tkn[2];
 char* buff = NULL;
-bool end;
 // handler vars
+bool end;
 volatile bool button_pressed = false;
 int value, mode, index_value, spacing = 0;
 float val;

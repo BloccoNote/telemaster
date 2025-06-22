@@ -11,9 +11,10 @@
 /// sd2Lcd S(rows, cols); \n
 /// \n
 /// note: by default rows and cols are 2 and 16 \n
-/// maby allocates string array in global \n
+/// maby allocates string array in global and NULL buffer \n
 /// \n
 /// char* Lcd_rows[rows];
+/// char* buffer = NULL;
 /// \n
 /// @subsubsection setup()
 /// in setup you should do something like: \n
@@ -30,7 +31,26 @@
 /// \n 
 /// lcd_rows[0] = lcd_row_1; ...
 /// \n
-/// [continua a scrivere documentazione]
+/// @subsubsection Simple utilisation  \n
+/// depending on what you want to do you might do different things, \n
+/// i generally raccomand to read what each function does to be more productive. \n
+/// One workflow could be: \n
+/// \n 
+/// read_line_sd(buffer);  \n 
+/// int index = find_index(buffer, ' ');  \n
+/// if index is correct;  \n
+/// find_and_remove_index(buffer, ' ');  \n
+/// Set_Text(buffer);  \n
+/// \n
+/// or you could use dedicate function \n 
+/// find_sd_line_by_index(buffer, index, ' ');  \n
+/// NOTE: this function find line ad calls Set_Text(); \n 
+/// \n 
+/// after that you want to call \n
+/// Get_print_token(lcd_lines); to obtain your lcd lines \n 
+/// if you wnat to ri-obtain the firs screen use \n 
+/// reset_print_token(); \n 
+
 
 #ifndef _SD_TO_LCD_
 #define _SD_TO_LCD_
@@ -67,7 +87,7 @@ private:
   int current_row = 0;
 
 public:
-  ///@name CONSTRUCTORS AND DESTRUCTORS
+  /// or you could use dedicate function@name CONSTRUCTORS AND DESTRUCTORS
   sd2Lcd(int r = 2, int c = 16);
   sd2Lcd(const sd2Lcd &X);
   ~sd2Lcd();
@@ -84,6 +104,7 @@ public:
   int find_index(char* buff, const char separator = ' ');
   int find_and_remove_index(char* &buff, const char separator = ' ');
   bool find_sd_line_by_index(char* &buff, int index, const char separator = ' ');
+  bool rewind_file();
 
   /// @name LCD STRING HANDLER & TOKENIZER
 
