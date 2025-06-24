@@ -285,7 +285,7 @@ int sd2Lcd::find_string_len(const char* str, char end_char){
 /// @return false if end or error
 /// @note the + 1 in columns is for '\0' character
 bool sd2Lcd::Get_print_token(char** lcd_lines){
-    if(ptr == NULL){
+    if(lcd_lines == NULL){
         PrintMsg(Error, "buff = NULL");
         return false;
     }

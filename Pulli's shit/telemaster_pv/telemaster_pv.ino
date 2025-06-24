@@ -1,4 +1,4 @@
-/*                    TELEMASTER V 1.02
+/*                    TELEMASTER V 1.1
 NOTE: I valori valgono per le resistenze date. Funzionano in SIMULAZIONE SU THINKERCAD, non ho provato irl :
 Link per il circuito su thinkercad (NON MODIFICARE)                                                           <-- modo 100% safe per non farsi cuzzare il circuito di thinker cad
  https://www.tinkercad.com/things/eSHNgc3p2s1-telemaster?sharecode=-aP5_nGmigwwymauiQA1TFkWA68BaPdvQ_gAVPeCcEM
@@ -43,7 +43,7 @@ Ground--1K--|--------|--------|-------|
 #define CS_SD_PIN 7
 #define FILE_NAME "test.txt"
 
-#define N_SKULL 5 //number of skull to be printed in "sete fottuti" screen
+#define N_SKULL 3 //number of skull to be printed in "sete fottuti" screen
 
 //lcd vars
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -93,7 +93,6 @@ void Nobackl();
 
 void setup()
 {
-  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(ANALOG_BUTTON_PIN, INPUT);
   // serial
   Serial.begin(9600);
@@ -119,6 +118,12 @@ void setup()
   spacing = N_SKULL % 2 ?            \
             7 - (int)(N_SKULL / 2) : \
             8 - (int)(N_SKULL / 2) ;
+
+  // printing intro message
+  lcd.setCursor(2,0);
+  lcd.print("Welcome to");
+  lcd.setCursor(1,1);
+  lcd.print("Telemaster V.1");
 }
 
 
@@ -131,12 +136,12 @@ void loop(){
       {
       button_pressed  = false;
       index_value = value;
-      int indx = random(0, 12);
-      S.find_sd_line_by_index(buff, indx, ' ');
-      delete[] buff;
-      buff = NULL;
-      lcd.clear();
       while(!button_pressed){
+        int indx = random(0, 12);
+        S.find_sd_line_by_index(buff, indx, ' ');
+        delete[] buff;
+        buff = NULL;
+        lcd.clear();
         do{
           end = S.Get_print_token(tkn);
           lcd.setCursor(0,0);
@@ -146,7 +151,8 @@ void loop(){
           wait(2000);
           if(end) lcd.clear();
         }while(end && !button_pressed);
-        S.reset_print_token();
+        wait(1000);
+        //S.reset_print_token();
       }
       break;
       }
@@ -174,8 +180,8 @@ void loop(){
         lcd.setCursor(spacing,1);
         for(int i = 0; i < N_SKULL; i++){ lcd.print((char) byte(1)); }
         do{
-          BackLight ? Nobackl() : backl();
           wait(1000);
+          BackLight ? Nobackl() : backl();
         }while(!button_pressed);
         break;
       case 10: //                                         LCD OFF
@@ -185,6 +191,8 @@ void loop(){
         break;
 
       default:
+        // if you get something werid lcd_off
+        value = 10;
         break;
     }
     button_pressed = false;
@@ -198,10 +206,11 @@ void handleInterrupt(){
     int_time = millis();
     enalble_interrupt = false;
   }
-  if(millis() - int_time > 25){
+  if(millis() - int_time > 10){
   	button_pressed = true;
     enalble_interrupt = true;
     mode = analogRead(ANALOG_BUTTON_PIN);
+    if(mode == 0 | mode > 980) mode = 1000;
   	value = mode / 100;
   }
 }
