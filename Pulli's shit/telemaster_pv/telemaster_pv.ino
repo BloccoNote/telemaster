@@ -1,4 +1,4 @@
-/*                    TELEMASTER V 1.1
+/*                    TELEMASTER V 1.2
 NOTE: I valori valgono per le resistenze date. Funzionano in SIMULAZIONE SU THINKERCAD, non ho provato irl :
 Link per il circuito su thinkercad (NON MODIFICARE)                                                           <-- modo 100% safe per non farsi cuzzare il circuito di thinker cad
  https://www.tinkercad.com/things/eSHNgc3p2s1-telemaster?sharecode=-aP5_nGmigwwymauiQA1TFkWA68BaPdvQ_gAVPeCcEM
@@ -54,7 +54,6 @@ char* tkn[2];
 char* buff = NULL;
 // handler vars
 bool end;
-volatile bool button_pressed = false;
 int value, mode, index_value, spacing = 0;
 float val;
 //debouncing vars
@@ -130,18 +129,17 @@ void setup()
 void loop(){
   if(value != 0 && value != index_value){
     lcd.clear();
-    backl();
     switch (value){
-      case 7: //                                    RANDOM STRING FROM SD
+      case 7: //                                RANDOM STRING FROM SD
       {
-      button_pressed  = false;
       index_value = value;
-      while(!button_pressed){
+      while(value == index_value){
         int indx = random(0, 12);
         S.find_sd_line_by_index(buff, indx, ' ');
         delete[] buff;
         buff = NULL;
         lcd.clear();
+        backl();
         do{
           end = S.Get_print_token(tkn);
           lcd.setCursor(0,0);
@@ -150,21 +148,21 @@ void loop(){
           lcd.print(tkn[1]);
           wait(2000);
           if(end) lcd.clear();
-        }while(end && !button_pressed);
+        }while(end && (value == index_value));
         wait(1000);
-        //S.reset_print_token();
       }
+      S.DelText();
       break;
       }
       case 8: //                                   LOADING SCREEN 
       {
-        button_pressed = false;
         index_value = value;
         char loading[] = {'-', byte(0), '|', '/', '\0'};
         int i = 0;
         lcd.setCursor(4,0);
+        backl();
         lcd.print("Loading...");
-        while(!button_pressed){
+        while(value == index_value){
           lcd.setCursor(7,1);
           lcd.print(loading[i++]);
           wait(600);
@@ -174,7 +172,6 @@ void loop(){
       }
       case 9: //                                     "siete Fottuti"
         index_value = value;
-        button_pressed = false;
         lcd.setCursor(1,0);
         lcd.print("Siete Fottuti!");
         lcd.setCursor(spacing,1);
@@ -182,7 +179,7 @@ void loop(){
         do{
           wait(1000);
           BackLight ? Nobackl() : backl();
-        }while(!button_pressed);
+        }while(value == index_value);
         break;
       case 10: //                                         LCD OFF
         index_value = value;
@@ -195,7 +192,6 @@ void loop(){
         value = 10;
         break;
     }
-    button_pressed = false;
   }
   delay(100);
 }
@@ -207,7 +203,6 @@ void handleInterrupt(){
     enalble_interrupt = false;
   }
   if(millis() - int_time > 10){
-  	button_pressed = true;
     enalble_interrupt = true;
     mode = analogRead(ANALOG_BUTTON_PIN);
     if(mode == 0 | mode > 980) mode = 1000;
@@ -218,7 +213,6 @@ void handleInterrupt(){
 
 /* NO anti-debouce 
 void handleInterrupt(){
-  button_pressed = true;
   mode = analogRead(ANALOG_BUTTON_PIN);
   value = mode / 100;
   Serial.println(value);
@@ -227,7 +221,7 @@ void handleInterrupt(){
 
 void wait(size_t time_ms){
   time_t time = millis();
-  while(millis() - time < time_ms && !button_pressed);
+  while(millis() - time < time_ms && value == index_value);
 }
 
 void backl(){

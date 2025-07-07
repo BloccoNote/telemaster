@@ -296,10 +296,19 @@ bool sd2Lcd::Get_print_token(char** lcd_lines){
     int try_count = 0;
     bool ret_val = true;
     bool end_r = false;
+    int l = 0;
     do{
         //checks if is the end of text
-        if(text_len - current_pos <= cols){
-            for(int i = 0; i < text_len - current_pos; i++){
+        l = text_len - current_pos;
+        if(l <= cols){
+            ///TODO: sometimes ptr points to a space
+            ///do not know why but would be nice to fix!
+            if(ptr[0] == ' ') ptr++;
+            for(int i = 0; i < l; i++){
+                if(ptr[i] == '\n'){
+                    lcd_lines[current_row][i] = ' ';
+                    continue;
+                }
                 lcd_lines[current_row][i] = ptr[i];
             }
             return false;
@@ -317,7 +326,7 @@ bool sd2Lcd::Get_print_token(char** lcd_lines){
         // find shortest sentence that fits
         else{
             int i = c;
-            for(; i >=  0; i--){
+            for(; i >= 0; i--){
                 if(ptr[i] == ' ') break;
             }
             for(int j = 0; j < i; j++){
@@ -344,6 +353,14 @@ void sd2Lcd::reset_print_token(){
   ptr = buffer;
   current_pos = 0;
   current_row = 0;
+}
+
+/// @brief deletes buff
+void sd2Lcd::DelText(){
+  if(buffer){
+      delete[] buffer;
+      buffer = NULL;
+  }
 }
 
 /// @name UTILILTY FUNCTIONS IMPLEMENTATIONS

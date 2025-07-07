@@ -112,6 +112,7 @@ public:
   int find_string_len(const char* str, char end_char = '\n');
   bool Get_print_token(char** lcd_lines);
   void reset_print_token();
+  void DelText();
 
   /// @name UTILILTY FUNCTIONS
 
